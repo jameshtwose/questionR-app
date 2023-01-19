@@ -41,3 +41,5 @@ vignettes/*.pdf
 *.Rproj
 scratch*
 .env
+*.dcf
+.DS_Store
