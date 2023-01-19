@@ -1,69 +1,56 @@
 library(tidyverse)
-library(lubridate)
+library(plotly)
 library(shiny)
-library(DT)
-library(shinythemes)
+library(dotenv)
+library(DBI)
 
-ui<-navbarPage("Planifier les cultures",
-               theme = shinytheme("sandstone"),
-               tabPanel(
-                 "Cultures",
-                 sidebarLayout(
-                   sidebarPanel(width = 3,
-                                inputPanel(
-                                  selectInput("Species", label = "Choisir l'espèces",
-                                              choices = levels(as.factor(iris$Species)))
-                                )),
-                   mainPanel(DTOutput("iris_datatable"),
-                             hr(),
-                             plotOutput("iris_plot"))
-                 )
-               ),
-               tabPanel("Fertilisation"),
-               tabPanel("Analyse de sol")
-)
+load_dot_env(file = ".env")
+
+con <- dbConnect(RPostgres::Postgres(),
+                 host = Sys.getenv("POSTGRESQL_ADDON_HOST"),
+                 dbname = Sys.getenv("POSTGRESQL_ADDON_DB"),
+                 port = 5432,
+                 user = Sys.getenv("POSTGRESQL_ADDON_USER"),
+                 password = Sys.getenv("POSTGRESQL_ADDON_PASSWORD"))
+
+# d <-  mtcars %>% 
+#   rownames_to_column("car")
+
+# d <- read.csv("data/questions.csv", row.names="X")
+
+d <- dbGetQuery(con, "SELECT * FROM questions_db")
+
+dbDisconnect(con)
+
+d$index <- as.numeric(d$index)
+d$question_importance <- as.numeric(d$question_importance)
 
 
-server <- function(input, output, session) {
-  my_iris <- reactiveValues(df=iris,sub=NULL, sub1=NULL)
-  
-  observeEvent(input$Species, {
-    my_iris$sub <- my_iris$df %>% filter(Species==input$Species)
-    my_iris$sub1 <- my_iris$df %>% filter(Species!=input$Species)
-  }, ignoreNULL = FALSE)
-  
-  output$iris_datatable <- renderDT({
-    n <- length(names(my_iris$sub))
-    DT::datatable(my_iris$sub,
-                  options = list(pageLength = 10),
-                  selection='none', editable= list(target = 'cell'), 
-                  rownames= FALSE)
+# UI  ----
+ui <- fluidPage(plotlyOutput("plot"),
+                tableOutput("click"))
+
+# server  ----
+server <- function(input, output) {
+  output$plot <- renderPlotly({
+    
+    key <- d$index
+    
+    p <- d %>% 
+      ggplot(aes(x = question, y = question_importance, color=factor(question_type),
+                 key = key)) +
+      geom_point(size = 4, alpha = 0.7)
+    
+    ggplotly(p) %>% 
+      event_register("plotly_click")
   })
   
-  observeEvent(input$iris_datatable_cell_edit,{
-    edit <- input$iris_datatable_cell_edit # just to simplify typing, can keep long form for later
-    print(edit) # debugging, remove in prod
-    str(edit)
-    i <- edit$row
-    j <- edit$col + 1
-    v <- edit$value
-    
-    my_iris$sub[i, j] <<- DT::coerceValue(v, my_iris$sub[i, j])  ## editing changes in the displayed dataset
-    
-    my_iris$df <<- rbind(my_iris$sub1,my_iris$sub)  ## reflecting changes in the original dataset
-  })
-  
-  output$iris_plot <- renderPlot({
-    my_iris$sub %>%
-      select(Sepal.Length, Petal.Length) %>% 
-      mutate(Sepal.Length=as.numeric(Sepal.Length),
-             Petal.Length=as.numeric(Petal.Length)) %>%
-      pivot_longer(cols=Sepal.Length:Petal.Length, names_to = "type", values_to = "valeur") %>%
-      group_by(type) %>%
-      summarize(somme=sum(valeur, na.rm=TRUE))%>%
-      ungroup() %>% 
-      ggplot(aes(x = type, y = as.numeric(somme))) + # I'm casting to numeric here because edit$value returns as a character, so need to coerce to number otherwise plots funny.
-      geom_point(size=3)
+  output$click <- renderTable({
+    point <- event_data(event = "plotly_click", priority = "event")
+    req(point) # to avoid error if no point is clicked
+    filter(d, index == point$key) # use the key to find selected point
   })
 }
-shinyApp(ui, server)
+
+# app ----
+shinyApp(ui = ui, server = server)
