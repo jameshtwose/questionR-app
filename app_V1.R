@@ -1,11 +1,28 @@
 library(tidyverse)
 library(plotly)
 library(shiny)
+library(dotenv)
+
+load_dot_env(file = ".env")
+
+con <- dbConnect(RPostgres::Postgres(),
+                 host = Sys.getenv("POSTGRESQL_ADDON_HOST"),
+                 dbname = Sys.getenv("POSTGRESQL_ADDON_DB"),
+                 port = 5432,
+                 user = Sys.getenv("POSTGRESQL_ADDON_USER"),
+                 password = Sys.getenv("POSTGRESQL_ADDON_PASSWORD"))
 
 # d <-  mtcars %>% 
 #   rownames_to_column("car")
 
-d <- read.csv("data/questions.csv", row.names="X")
+# d <- read.csv("data/questions.csv", row.names="X")
+
+d <- dbGetQuery(con, "SELECT * FROM questions_db")
+
+dbDisconnect(con)
+
+d$index <- as.numeric(d$index)
+d$question_importance <- as.numeric(d$question_importance)
 
 
 # UI  ----
