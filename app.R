@@ -37,7 +37,7 @@ server <- function(input, output) {
     key <- d$index
     
     p <- d %>% 
-      ggplot(aes(x = question, y = question_importance, color=factor(question_type),
+      ggplot(aes(x = question_importance, y = question, color=factor(question_type),
                  key = key)) +
       geom_point(size = 4, alpha = 0.7)
     
