@@ -3,6 +3,33 @@ library(plotly)
 library(shiny)
 library(dotenv)
 library(DBI)
+library(htmlwidgets)
+
+javascript <- "
+function(el, x){
+  el.on('plotly_click', function(data) {
+    var colors = [];
+    // check if color is a string or array
+    if(typeof data.points[0].data.marker.color == 'string'){
+      for (var i = 0; i < data.points[0].data.marker.color.length; i++) {
+        colors.push(data.points[0].data.marker.color);
+      }
+    } else {
+      colors = data.points[0].data.marker.color;
+    }
+    // some debugging
+    //console.log(data.points[0].data.marker.color)
+    //console.log(colors)
+
+    // set color of selected point
+    colors[data.points[0].pointNumber] = '#fcdd14';
+    Plotly.restyle(el,
+      {'marker':{color: colors, size: 17, alpha: 0.7}},
+      [data.points[0].curveNumber]
+    );
+  });
+}
+"
 
 load_dot_env(file = ".env")
 
@@ -12,11 +39,6 @@ con <- dbConnect(RPostgres::Postgres(),
                  port = 5432,
                  user = Sys.getenv("POSTGRESQL_ADDON_USER"),
                  password = Sys.getenv("POSTGRESQL_ADDON_PASSWORD"))
-
-# d <-  mtcars %>% 
-#   rownames_to_column("car")
-
-# d <- read.csv("data/questions.csv", row.names="X")
 
 d <- dbGetQuery(con, "SELECT * FROM questions_db")
 
@@ -35,6 +57,9 @@ ui <- fluidPage(
                                style="width: 50px;")), 
                            "A Question Selector App"),
              windowTitle = "A Question Selector App"),
+  h3("Please choose any questions you deem important by clicking on the points in the plot"),
+  p("If you hover over each point it will show you the question (as well as some extra information). 
+    As soon as you click on a point your response is collected and the point will change colour."),
   plotlyOutput("plot"),
   br(),
   br(),
@@ -53,16 +78,17 @@ ui <- fluidPage(
 # server  ----
 server <- function(input, output) {
   
-  
   output$plot <- renderPlotly({
     
     key <- d$index
     
-    p <- d %>% 
-      ggplot(aes(x = question_importance, y = question, color=factor(question_type),
-                 key = key)) +
+    p <- ggplot(d,
+                aes(x = hindrances,
+                    y = acceptability,
+                    key = key,
+                    text = paste("Question:", question,
+                                 "<br>Importance:", question_importance))) +
       geom_point(size = 4, alpha = 0.7) +
-      scale_color_manual(values=c("#999999", "#fcdd14", "#8f0fd4")) + 
       theme(plot.title = element_text(hjust = 0.5, color="white"),
             axis.title.x = element_text(size = 14, color="white"),
             axis.title.y = element_text(size = 14, color="white"),
@@ -83,15 +109,39 @@ server <- function(input, output) {
                            r = 100,
                            b = 100,
                            t = 50,
-                           pad = 1))
+                           pad = 1)) %>% 
+    onRender(javascript)
   })
+  
+
   
   output$click <- renderTable({
     point <- event_data(event = "plotly_click", priority = "event")
+    selected_value <- d[d$index==as.numeric(point$key), "question_importance"]
+    update_value <- if (is.null(point)) selected_value else selected_value + 1
+    insert_statement <- paste0("UPDATE questions_db SET question_importance = ",
+                               update_value,
+                               " WHERE index = ", point$key, ";")
+    print(insert_statement)
+    ## Update value in a row
+    con <- dbConnect(RPostgres::Postgres(),
+                     host = Sys.getenv("POSTGRESQL_ADDON_HOST"),
+                     dbname = Sys.getenv("POSTGRESQL_ADDON_DB"),
+                     port = 5432,
+                     user = Sys.getenv("POSTGRESQL_ADDON_USER"),
+                     password = Sys.getenv("POSTGRESQL_ADDON_PASSWORD"))
+    
+    if (is.null(point)) "don't execute" else dbExecute(con, insert_statement)
+    
+    dbDisconnect(con)
+
     req(point) # to avoid error if no point is clicked
     filter(d, index == point$key) # use the key to find selected point
   })
+  
+
 }
+
 
 # app ----
 shinyApp(ui = ui, server = server)

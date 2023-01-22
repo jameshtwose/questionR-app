@@ -41,7 +41,18 @@ con
 ## List out all views and tables in the employees 
 dbListTables(con)
 
+key <- 3
+update_value <- 300
+insert_statement <- paste0("UPDATE questions_db SET question_importance = ",
+                           update_value,
+                          " WHERE index = ", key, ";")
+
+## Update value in a row
+dbExecute(con, insert_statement)
+
 ## Save this result as an R object
 df <- dbGetQuery(con, "SELECT * FROM questions_db")
+
+df[df$index==2, "question_importance"] + 1
 
 dbDisconnect(con)
