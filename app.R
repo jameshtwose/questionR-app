@@ -45,7 +45,9 @@ d <- dbGetQuery(con, "SELECT * FROM questions_db")
 dbDisconnect(con)
 
 d$index <- as.numeric(d$index)
-d$question_importance <- as.numeric(d$question_importance)
+d$strength <- as.numeric(d$strength)
+d$opportunity <- as.numeric(d$opportunity)
+d$importance <- as.numeric(d$importance)
 
 
 # UI  ----
@@ -57,10 +59,16 @@ ui <- fluidPage(
                                style="width: 50px;")), 
                            "A Question Selector App"),
              windowTitle = "A Question Selector App"),
-  h3("Please choose any questions you deem important by clicking on the points in the plot"),
-  p("If you hover over each point it will show you the question (as well as some extra information). 
-    As soon as you click on a point your response is collected and the point will change colour."),
+  h3("Valitse mielestäsi tärkeimpiä vastauksia klikkaamalla pisteitä kuvaajasta!"),
+  p("Kun viet kursorin pisteen ylle, näet sen sisältämän vastauksen. Kun klikkaat pistettä,
+    valintasi rekisteröityy ja piste vaihtaa väriä."),
   plotlyOutput("plot"),
+  br(),
+  br(),
+  br(),
+  br(),
+  br(),
+  br(),
   br(),
   br(),
   br(),
@@ -83,17 +91,17 @@ server <- function(input, output) {
     key <- d$index
     
     p <- ggplot(d,
-                aes(x = hindrances,
-                    y = acceptability,
+                aes(x = strength,
+                    y = opportunity,
                     key = key,
-                    text = paste("Question:", question,
-                                 "<br>Importance:", question_importance))) +
+                    text = paste(narrativeTitle,
+                                 "<br><br>", narrative))) +
       geom_point(size = 4, alpha = 0.7) +
       theme(plot.title = element_text(hjust = 0.5, color="white"),
             axis.title.x = element_text(size = 14, color="white"),
             axis.title.y = element_text(size = 14, color="white"),
-            axis.text.x = element_text(color="white"),
-            axis.text.y = element_text(color="white"),
+            axis.text.x = element_blank(),
+            axis.text.y = element_blank(),
             plot.tag.position = c(0.15, 0.02),
             panel.background = element_rect(fill = "#333333"),
             plot.background = element_rect(fill = "#333333"),
@@ -103,7 +111,7 @@ server <- function(input, output) {
             legend.title = element_text(color="white")
       )
     
-    ggplotly(p, height=500) %>% 
+    ggplotly(p, height=650, tooltip = "text") %>% 
       event_register("plotly_click") %>% 
       layout(margin = list(l = 100,
                            r = 100,
@@ -117,9 +125,9 @@ server <- function(input, output) {
   
   output$click <- renderTable({
     point <- event_data(event = "plotly_click", priority = "event")
-    selected_value <- d[d$index==as.numeric(point$key), "question_importance"]
+    selected_value <- d[d$index==as.numeric(point$key), "importance"]
     update_value <- if (is.null(point)) selected_value else selected_value + 1
-    insert_statement <- paste0("UPDATE questions_db SET question_importance = ",
+    insert_statement <- paste0("UPDATE questions_db SET importance = ",
                                update_value,
                                " WHERE index = ", point$key, ";")
     print(insert_statement)
@@ -136,7 +144,7 @@ server <- function(input, output) {
     dbDisconnect(con)
 
     req(point) # to avoid error if no point is clicked
-    filter(d, index == point$key) # use the key to find selected point
+    filter(d[, c("index", "importance", "narrativeTitle", "narrative")], index == point$key) # use the key to find selected point
   })
   
 

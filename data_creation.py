@@ -4,16 +4,23 @@ from dotenv import load_dotenv, find_dotenv
 import os
 from sqlalchemy import create_engine
 # %%
-question_df = pd.DataFrame({"question": ["What is your favourite food?",
-                           "What makes you happy?",
-                           "Why do you get up in the morning?",
-                           "How can you live with yourself?",
-                           "What is the best flavour of ice cream?"],
-              "question_importance": [1, 10, 7, 9, 2],
-              "question_type": ["happy", "existential", "existential", "existential", "happy"]}).reset_index()
-question_df
+# question_df = pd.DataFrame({"question": ["What is your favourite food?",
+#                            "What makes you happy?",
+#                            "Why do you get up in the morning?",
+#                            "How can you live with yourself?",
+#                            "What is the best flavour of ice cream?"],
+#               "question_importance": [1, 10, 7, 9, 2],
+#               "question_type": ["happy", "existential", "existential", "existential", "happy"]}).reset_index()
+# question_df
 # %%
 # question_df.to_csv("data/questions.csv")
+
+# %%
+question_df = pd.read_csv("data/data_for_votes.csv").reset_index()
+
+# %%
+question_df.head()
+
 # %%
 _ = load_dotenv(find_dotenv())
 

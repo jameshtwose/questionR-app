@@ -43,3 +43,4 @@ scratch*
 .env
 *.dcf
 .DS_Store
+data*
