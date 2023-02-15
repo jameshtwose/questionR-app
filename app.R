@@ -57,8 +57,8 @@ ui <- fluidPage(
   titlePanel(div(a(href='https://services.jms.rocks',
                                  img(src='https://services.jms.rocks/img/logo.png',
                                style="width: 50px;")), 
-                           "A Question Selector App"),
-             windowTitle = "A Question Selector App"),
+                           "Narratives Selector App"),
+             windowTitle = "Narratives Selector App"),
   h3("Valitse mielestäsi tärkeimpiä vastauksia klikkaamalla pisteitä kuvaajasta!"),
   p("Kun viet kursorin pisteen ylle, näet sen sisältämän vastauksen. Kun klikkaat pistettä,
     valintasi rekisteröityy ja piste vaihtaa väriä."),
@@ -97,6 +97,8 @@ server <- function(input, output) {
                     text = paste(narrativeTitle,
                                  "<br><br>", narrative))) +
       geom_point(size = 4, alpha = 0.7) +
+      labs(x = "&#8592; Heikkouksia | Vahvuuksia &#8594;",
+           y = "&#8592; Uhkia | Mahdollisuuksia &#8594;") +
       theme(plot.title = element_text(hjust = 0.5, color="white"),
             axis.title.x = element_text(size = 14, color="white"),
             axis.title.y = element_text(size = 14, color="white"),

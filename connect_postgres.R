@@ -54,6 +54,8 @@ dbListTables(con)
 ## Save this result as an R object
 df <- dbGetQuery(con, "SELECT * FROM questions_db")
 
+df[df$index==2, "narrative"]
+
 # df[df$index==2, "importance"] + 1
 
 dbDisconnect(con)
