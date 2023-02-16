@@ -47,7 +47,7 @@ dbDisconnect(con)
 d$index <- as.numeric(d$index)
 d$strength <- as.numeric(d$strength)
 d$opportunity <- as.numeric(d$opportunity)
-d$importance <- as.numeric(d$importance)
+d$votes <- as.numeric(d$votes)
 
 
 # UI  ----
@@ -127,9 +127,9 @@ server <- function(input, output) {
   
   output$click <- renderTable({
     point <- event_data(event = "plotly_click", priority = "event")
-    selected_value <- d[d$index==as.numeric(point$key), "importance"]
+    selected_value <- d[d$index==as.numeric(point$key), "votes"]
     update_value <- if (is.null(point)) selected_value else selected_value + 1
-    insert_statement <- paste0("UPDATE questions_db SET importance = ",
+    insert_statement <- paste0("UPDATE questions_db SET votes = ",
                                update_value,
                                " WHERE index = ", point$key, ";")
     print(insert_statement)
@@ -146,7 +146,7 @@ server <- function(input, output) {
     dbDisconnect(con)
 
     req(point) # to avoid error if no point is clicked
-    filter(d[, c("index", "importance", "narrativeTitle", "narrative")], index == point$key) # use the key to find selected point
+    filter(d[, c("index", "votes", "narrativeTitle", "narrative")], index == point$key) # use the key to find selected point
   })
   
 
